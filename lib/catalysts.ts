@@ -66,6 +66,10 @@ export interface TickerCatalystSet {
     actualMovePct: number;   // signed %, day-of close vs prior close
     type: CatalystCategory;
   }>;
+  // True when Finnhub key is configured server-side and earnings/dividends
+  // could be queried. False means the timeline shows OPEX-only and we should
+  // surface a "configure Finnhub" hint to the user.
+  liveEarnings?: boolean;
 }
 
 // ----- Density score -----

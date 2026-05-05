@@ -107,16 +107,19 @@ export default function Home() {
     if (!data) {
       return [
         { source: "Finnhub", ok: false },
-        { source: "FDA OpenData", ok: false },
         { source: "Curated", ok: true },
       ];
     }
     const used = new Set(data.catalysts.map((c) => c.source));
     return [
-      { source: "Finnhub", ok: used.has("Finnhub"), note: used.has("Finnhub") ? "Live earnings + dividends" : "API key not configured — synthetic fallback" },
-      { source: "FDA OpenData", ok: used.has("FDA OpenData"), note: "PDUFA decision dates" },
-      { source: "Curated", ok: used.has("Curated"), note: "Product launches, lockups, opex, analyst days" },
-      { source: "Index Provider", ok: used.has("Index Provider"), note: "Russell + S&P review schedules" },
+      {
+        source: "Finnhub",
+        ok: !!data.liveEarnings,
+        note: data.liveEarnings
+          ? "Live earnings + dividends"
+          : "Not configured — set FINNHUB_API_KEY in Vercel env",
+      },
+      { source: "Curated", ok: used.has("Curated"), note: "Monthly OPEX (third Fridays)" },
     ];
   }, [data]);
 
@@ -153,6 +156,19 @@ export default function Home() {
             {data && <LiveSourcesRow sources={sources} asOf={data.asOf} />}
           </div>
         </div>
+
+        {/* Finnhub-not-configured banner */}
+        {data && data.liveEarnings === false && (
+          <div className="mt-3 rounded-md border border-cat-opt/40 bg-cat-opt/10 px-3 py-2 text-[12px] text-cat-opt flex items-start gap-2">
+            <Loader2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" aria-hidden />
+            <div>
+              <span className="font-medium">Earnings + dividends offline.</span>{" "}
+              Add <code className="font-mono text-[11px]">FINNHUB_API_KEY</code> to your Vercel
+              env to enable the live calendar. Free tier covers all S&amp;P 1500 names.
+              The timeline currently shows monthly options expiry only.
+            </div>
+          </div>
+        )}
 
         {/* TICKER MODE */}
         {mode === "ticker" && (

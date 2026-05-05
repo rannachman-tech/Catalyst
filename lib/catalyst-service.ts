@@ -2,23 +2,34 @@ import type { Catalyst, TickerCatalystSet } from "./catalysts";
 import { addDays, parseISO, stripTime, toISO } from "./catalysts";
 import { fetchEarnings, fetchDividends, isFinnhubConfigured } from "./finnhub";
 import { curatedFor } from "./catalysts-curated";
-import { syntheticFor } from "./catalysts-fallback";
 import { resolveTicker, isCurated } from "./universe";
 
-const MONTHLY_OPEX_2026 = ["2026-05-15", "2026-06-19", "2026-07-17", "2026-08-21"];
-
-function genericOpexCatalysts(ticker: string): Catalyst[] {
-  return MONTHLY_OPEX_2026.map((date) => ({
-    id: "opex:" + ticker + ":" + date,
-    ticker,
-    category: "options-expiry" as const,
-    date,
-    title: "Monthly options expiry",
-    summary: "Standard third-Friday expiry — pin risk into close on high-OI strikes.",
-    impact: 0.012,
-    confirmed: true,
-    source: "Curated" as const,
-  }));
+function genericOpexCatalysts(ticker: string, today: Date): Catalyst[] {
+  const out: Catalyst[] = [];
+  for (let i = 0; i <= 3; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    let day = 1;
+    while (new Date(d.getFullYear(), d.getMonth(), day).getDay() !== 5) day++;
+    const fri = new Date(d.getFullYear(), d.getMonth(), day + 14);
+    if (fri >= today) {
+      const y = fri.getFullYear();
+      const m = String(fri.getMonth() + 1).padStart(2, "0");
+      const dd = String(fri.getDate()).padStart(2, "0");
+      const date = y + "-" + m + "-" + dd;
+      out.push({
+        id: "opex:" + ticker + ":" + date,
+        ticker,
+        category: "options-expiry",
+        date,
+        title: "Monthly options expiry",
+        summary: "Third-Friday expiry — pin risk into close on high-OI strikes.",
+        impact: 0.01,
+        confirmed: true,
+        source: "Curated",
+      });
+    }
+  }
+  return out;
 }
 
 export function today(): Date {
@@ -42,8 +53,8 @@ export async function getTickerCatalysts(ticker: string): Promise<TickerCatalyst
     if (!seen.has(k)) seen.set(k, c);
   };
 
-  let usedLive = false;
-  if (isFinnhubConfigured()) {
+  const liveAvailable = isFinnhubConfigured();
+  if (liveAvailable) {
     try {
       const [earn, div] = await Promise.all([
         fetchEarnings(upper, fromISO, toISO_),
@@ -51,13 +62,11 @@ export async function getTickerCatalysts(ticker: string): Promise<TickerCatalyst
       ]);
       earn.forEach(push);
       div.forEach(push);
-      usedLive = earn.length > 0 || div.length > 0;
     } catch {}
   }
 
-  if (curatedName) curatedFor(upper).forEach(push);
-  if (!usedLive) syntheticFor(upper).forEach(push);
-  if (!curatedName) genericOpexCatalysts(upper).forEach(push);
+  if (curatedName) curatedFor(upper, now).forEach(push);
+  if (!curatedName) genericOpexCatalysts(upper, now).forEach(push);
 
   const all = Array.from(seen.values());
   const fromDate = stripTime(now);
@@ -68,13 +77,6 @@ export async function getTickerCatalysts(ticker: string): Promise<TickerCatalyst
       return d >= fromDate && d <= toDate;
     })
     .sort((a, b) => a.date.localeCompare(b.date));
-
-  const synth = syntheticFor(upper).find((c) => c.category === "earnings");
-  const history = (synth?.meta?.last4Reactions ?? []).map((mv, i) => ({
-    date: toISO(addDays(now, -90 * (4 - i))),
-    actualMovePct: mv,
-    type: "earnings" as const,
-  }));
 
   return {
     ticker: upper,
@@ -88,7 +90,8 @@ export async function getTickerCatalysts(ticker: string): Promise<TickerCatalyst
     },
     next: upcoming[0],
     catalysts: upcoming,
-    history,
+    history: [],
+    liveEarnings: liveAvailable,
   };
 }
 

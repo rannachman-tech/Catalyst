@@ -36,6 +36,14 @@ export function findInUniverse(ticker: string): UniverseEntry | null {
   return load().byTicker.get(u) ?? null;
 }
 
+export function findByInstrumentId(id: number): UniverseEntry | null {
+  const { stocks } = load();
+  for (const s of stocks) {
+    if (s.instrumentId === id) return s;
+  }
+  return null;
+}
+
 export interface SearchHit {
   ticker: string;
   symbolFull: string;
