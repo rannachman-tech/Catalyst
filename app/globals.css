@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light */
+  --bg: 250 250 249;
+  --surface: 255 255 255;
+  --surface-2: 244 244 245;
+  --border: 228 228 231;
+  --border-strong: 212 212 216;
+  --fg: 24 24 27;
+  --fg-muted: 82 82 91;
+  --fg-subtle: 113 113 122;
+  --accent: 12 119 84;          /* eToro green */
+  --accent-fg: 255 255 255;
+
+  --cat-earn: 220 38 38;        /* red — earnings */
+  --cat-div: 22 163 74;         /* green — dividend */
+  --cat-fda: 168 85 247;        /* purple — FDA */
+  --cat-prod: 14 165 233;       /* sky — product */
+  --cat-opt: 234 88 12;         /* orange — opex */
+  --cat-idx: 234 179 8;         /* yellow — index */
+  --cat-lock: 100 116 139;      /* slate — lockup */
+  --cat-anal: 99 102 241;       /* indigo — analyst */
+
+  --phase-quiet: 22 163 74;
+  --phase-mod: 234 179 8;
+  --phase-heavy: 220 38 38;
+}
+
+.dark {
+  --bg: 12 12 14;
+  --surface: 22 22 26;
+  --surface-2: 30 30 35;
+  --border: 39 39 45;
+  --border-strong: 63 63 70;
+  --fg: 244 244 245;
+  --fg-muted: 161 161 170;
+  --fg-subtle: 113 113 122;
+  --accent: 34 197 145;
+  --accent-fg: 5 19 14;
+
+  --cat-earn: 248 113 113;
+  --cat-div: 74 222 128;
+  --cat-fda: 192 132 252;
+  --cat-prod: 56 189 248;
+  --cat-opt: 251 146 60;
+  --cat-idx: 250 204 21;
+  --cat-lock: 148 163 184;
+  --cat-anal: 129 140 248;
+
+  --phase-quiet: 74 222 128;
+  --phase-mod: 250 204 21;
+  --phase-heavy: 248 113 113;
+}
+
+html, body { height: 100%; }
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar — dark-friendly */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-strong));
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--fg-subtle)); }
+
+/* Subtle pulse for live dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.9); }
+}
+.live-dot { animation: pulse-dot 2.4s ease-in-out infinite; }
+
+/* Fade-in for content swaps */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fade-in 220ms ease-out; }
+
+/* Ticker chip + autocomplete */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-family: var(--font-geist-mono, "Geist Mono"), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--fg));
+  border: 1px solid rgb(var(--border));
+}
+
+/* Vertical timeline rail */
+.timeline-rail {
+  position: absolute;
+  left: 22px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgb(var(--border-strong)) 16px,
+    rgb(var(--border-strong)) calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+/* Today marker */
+.today-marker {
+  position: absolute;
+  left: 13px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  box-shadow: 0 0 0 4px rgb(var(--bg)), 0 0 0 6px rgb(var(--accent) / 0.35);
+}
+
+/* Heatmap cell */
+.heat-cell {
+  border-radius: 4px;
+  aspect-ratio: 1.4 / 1;
+  transition: transform 120ms ease;
+}
+.heat-cell:hover { transform: scale(1.06); z-index: 1; }
+
+/* Reusable focus ring */
+.fr:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--bg)), 0 0 0 4px rgb(var(--accent));
+}
