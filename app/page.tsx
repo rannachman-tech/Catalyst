@@ -175,54 +175,57 @@ export default function Home() {
           <>
             <section className="mt-4 grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-3 lg:gap-4 items-start">
               {/* LEFT — picker + centerpiece */}
-              <div className="rounded-lg border border-border bg-surface p-3.5 sm:p-4 flex flex-col">
-                <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg-subtle">
-                  {tickerEntry ? tickerEntry.name : "Pick a ticker"}
-                </div>
+              <div className="relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-accent/4 via-surface to-surface p-4 sm:p-5 flex flex-col">
+                <div className="absolute top-0 right-0 -mt-12 -mr-12 h-40 w-40 rounded-full bg-accent/6 blur-3xl pointer-events-none" />
+                <div className="relative">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-fg-subtle">
+                    {tickerEntry ? tickerEntry.name : "Pick a ticker"}
+                  </div>
 
-                <div className="mt-2.5 max-w-[440px] w-full">
-                  <TickerPicker
-                    value={ticker}
-                    onChange={setTicker}
-                    recents={recents}
-                    onClearRecents={() => {
-                      setRecents([]);
-                      try {
-                        localStorage.removeItem(RECENTS_KEY);
-                      } catch { /* ignore */ }
-                    }}
-                  />
-                </div>
+                  <div className="mt-2.5 max-w-[440px] w-full">
+                    <TickerPicker
+                      value={ticker}
+                      onChange={setTicker}
+                      recents={recents}
+                      onClearRecents={() => {
+                        setRecents([]);
+                        try {
+                          localStorage.removeItem(RECENTS_KEY);
+                        } catch { /* ignore */ }
+                      }}
+                    />
+                  </div>
 
-                {/* Big sentence */}
-                {summary && (
-                  <p className="mt-3 text-[17px] sm:text-[19px] leading-snug font-semibold text-fg max-w-[42ch]">
-                    {summary.primary}
-                  </p>
-                )}
+                  {/* Big sentence */}
+                  {summary && (
+                    <p className="mt-4 text-[20px] sm:text-[24px] leading-[1.15] font-semibold text-fg max-w-[22ch] tracking-tight">
+                      {summary.primary}
+                    </p>
+                  )}
 
-                {/* Density score */}
-                <div className="mt-3">
-                  {loading && !data && (
-                    <div className="flex items-center gap-2 py-10 justify-center text-fg-subtle text-[13px]">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Pulling catalysts…
+                  {/* Density score */}
+                  <div className="mt-4">
+                    {loading && !data && (
+                      <div className="flex items-center gap-2 py-10 justify-center text-fg-subtle text-[13px]">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Pulling catalysts…
+                      </div>
+                    )}
+                    {summary && (
+                      <DensityScore
+                        score={summary.density}
+                        phase={summary.phase}
+                        count30={summary.count30}
+                        count90={summary.count90}
+                      />
+                    )}
+                  </div>
+
+                  {err && (
+                    <div className="mt-3 rounded-md border border-cat-earn/40 bg-cat-earn/10 p-2.5 text-[12px] text-cat-earn">
+                      {err}
                     </div>
                   )}
-                  {summary && (
-                    <DensityScore
-                      score={summary.density}
-                      phase={summary.phase}
-                      count30={summary.count30}
-                      count90={summary.count90}
-                    />
-                  )}
                 </div>
-
-                {err && (
-                  <div className="mt-3 rounded-md border border-cat-earn/40 bg-cat-earn/10 p-2.5 text-[12px] text-cat-earn">
-                    {err}
-                  </div>
-                )}
               </div>
 
               {/* RIGHT — insights + trade CTA */}
@@ -344,19 +347,23 @@ export default function Home() {
 
 function ModeTabs({ mode, setMode }: { mode: Mode; setMode: (m: Mode) => void }) {
   return (
-    <div className="inline-flex h-9 rounded-md border border-border bg-surface p-0.5 text-[12.5px] font-medium">
+    <div className="inline-flex h-10 rounded-full border border-border bg-surface p-1 text-[13px] font-medium gap-1">
       <button
         onClick={() => setMode("ticker")}
-        className={`fr inline-flex items-center gap-1.5 px-3 rounded-[5px] transition-colors ${
-          mode === "ticker" ? "bg-surface-2 text-fg" : "text-fg-subtle hover:text-fg"
+        className={`fr inline-flex items-center gap-1.5 px-4 rounded-full transition-all ${
+          mode === "ticker"
+            ? "bg-fg text-bg shadow-sm"
+            : "text-fg-subtle hover:text-fg"
         }`}
       >
         <Search className="h-3.5 w-3.5" /> Single ticker
       </button>
       <button
         onClick={() => setMode("portfolio")}
-        className={`fr inline-flex items-center gap-1.5 px-3 rounded-[5px] transition-colors ${
-          mode === "portfolio" ? "bg-surface-2 text-fg" : "text-fg-subtle hover:text-fg"
+        className={`fr inline-flex items-center gap-1.5 px-4 rounded-full transition-all ${
+          mode === "portfolio"
+            ? "bg-fg text-bg shadow-sm"
+            : "text-fg-subtle hover:text-fg"
         }`}
       >
         <Briefcase className="h-3.5 w-3.5" /> My book
