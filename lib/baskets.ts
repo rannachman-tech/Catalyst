@@ -9,7 +9,9 @@
 
 import type { Phase } from "./catalysts";
 import type { TickerEntry } from "./tickers";
-import { HEDGE_ETFS } from "./tickers";
+import { HEDGE_ETFS, TICKERS } from "./tickers";
+
+const CURATED_IDS = new Set(TICKERS.map((t) => t.instrumentId));
 
 export interface BasketHolding {
   ticker: string;
@@ -125,7 +127,18 @@ export function basketFor(ticker: TickerEntry, phase: Phase): Basket {
   };
 }
 
+const BROAD_FALLBACK: TickerEntry = {
+  ticker: "VTI",
+  symbolFull: "VTI",
+  instrumentId: 4237,
+  name: "Vanguard Total Stock Market ETF",
+  sector: "Tech",
+  country: "US",
+};
+
 function pickComplement(t: TickerEntry): TickerEntry {
+  if (t.ticker === "VTI") return BROAD_FALLBACK;
+  if (!CURATED_IDS.has(t.instrumentId)) return BROAD_FALLBACK;
   const PRIMARY: Record<TickerEntry["sector"], TickerEntry> = {
     Tech: { ticker: "MSFT", symbolFull: "MSFT", instrumentId: 1004, name: "Microsoft", sector: "Tech", country: "US" },
     Semis: { ticker: "AVGO", symbolFull: "AVGO", instrumentId: 4236, name: "Broadcom", sector: "Semis", country: "US" },

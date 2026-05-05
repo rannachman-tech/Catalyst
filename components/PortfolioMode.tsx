@@ -20,7 +20,6 @@ import {
   humanDate,
   type CatalystCategory,
 } from "@/lib/catalysts";
-import { findTicker } from "@/lib/tickers";
 import PortfolioHeatmap from "./PortfolioHeatmap";
 
 const STORAGE_KEY = "ec-portfolio:v1";
@@ -29,6 +28,7 @@ const SUGGESTIONS = [
   ["NVDA", "AAPL", "MSFT", "META", "TSLA"],
   ["NVDA", "TSLA", "AMD", "PLTR", "COIN", "MARA"],
   ["LLY", "MRNA", "VRTX", "BIIB", "GILD"],
+  ["NICE", "ETOR", "CHKP", "WIX", "MNDY", "CYBR"],
 ];
 
 export default function PortfolioMode() {
@@ -38,13 +38,12 @@ export default function PortfolioMode() {
   const [sets, setSets] = useState<TickerCatalystSet[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Restore from localStorage on first paint
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as string[];
-        if (Array.isArray(parsed)) setTickers(parsed.filter((t) => !!findTicker(t)));
+        if (Array.isArray(parsed)) setTickers(parsed.filter((t) => /^[A-Z][A-Z0-9.]{0,7}$/.test(t)));
       }
     } catch { /* ignore */ }
   }, []);
@@ -55,7 +54,6 @@ export default function PortfolioMode() {
     } catch { /* ignore */ }
   }, [tickers]);
 
-  // Re-fetch whenever the ticker list changes
   useEffect(() => {
     if (tickers.length === 0) {
       setSets([]);
@@ -87,18 +85,33 @@ export default function PortfolioMode() {
   const aggregated = useMemo(() => aggregatePortfolio(sets, 13), [sets]);
   const today = parseISO(toISO(new Date()));
 
-  function addTickers(input: string) {
+  async function addTickers(input: string) {
     const parts = input
       .split(/[\s,;]+/)
       .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
-    const valid = parts.filter((p) => !!findTicker(p));
-    const invalid = parts.filter((p) => !findTicker(p));
+      .filter((p) => /^[A-Z][A-Z0-9.]{0,7}$/.test(p));
+    if (parts.length === 0) {
+      setError(null);
+      return;
+    }
+    const checks = await Promise.all(
+      parts.map((p) =>
+        fetch(`/api/search?q=${encodeURIComponent(p)}&limit=1`)
+          .then((r) => r.json())
+          .then((j: { hits?: Array<{ ticker: string }> }) => {
+            const hit = (j.hits ?? []).find(
+              (h) => h.ticker.toUpperCase() === p.toUpperCase()
+            );
+            return hit ? p : null;
+          })
+          .catch(() => null)
+      )
+    );
+    const valid = checks.filter((x): x is string => !!x);
+    const invalid = parts.filter((p, i) => !checks[i]);
     setTickers((prev) => Array.from(new Set([...prev, ...valid])).slice(0, 20));
     if (invalid.length > 0) {
-      setError(
-        `Not in our supported universe: ${invalid.join(", ")}. Type any S&P-100 ticker or pick from the suggestions.`
-      );
+      setError(`Not on the eToro stock catalog: ${invalid.join(", ")}.`);
     } else {
       setError(null);
     }
@@ -108,7 +121,6 @@ export default function PortfolioMode() {
     setTickers((prev) => prev.filter((x) => x !== t));
   }
 
-  // Heaviest week + heaviest tickers
   const heaviest = aggregated.heaviest;
   const heaviestTickers = useMemo(() => {
     return sets
@@ -127,7 +139,6 @@ export default function PortfolioMode() {
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-4 lg:gap-6 items-stretch">
-      {/* LEFT — heatmap + inputs */}
       <div className="rounded-lg border border-border bg-surface p-4 sm:p-5">
         <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
           <Briefcase className="h-3 w-3" />
@@ -145,7 +156,7 @@ export default function PortfolioMode() {
                 setInput("");
               }
             }}
-            placeholder="Paste tickers — NVDA AAPL TSLA…"
+            placeholder="Paste tickers — NVDA NICE ETOR…"
             className="fr flex-1 h-10 rounded-md border border-border bg-bg px-3 text-[13px] font-mono text-fg placeholder:text-fg-subtle/60"
           />
           <button
@@ -215,7 +226,6 @@ export default function PortfolioMode() {
         </div>
       </div>
 
-      {/* RIGHT — verdict */}
       <div className="flex flex-col gap-4">
         <div className="rounded-lg border border-border bg-surface p-4 sm:p-5 flex-1">
           <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
@@ -373,7 +383,6 @@ function CategoryMix({ sets, today }: { sets: TickerCatalystSet[]; today: Date }
 }
 
 function EmptyHeatmap() {
-  // 13 cols × 1 row faint shimmer to hint at the upcoming visualisation
   const start = monday(new Date());
   return (
     <div>

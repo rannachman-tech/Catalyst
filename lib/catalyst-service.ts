@@ -13,11 +13,24 @@ import { addDays, parseISO, stripTime, toISO } from "./catalysts";
 import { fetchEarnings, fetchDividends, isFinnhubConfigured } from "./finnhub";
 import { curatedFor } from "./catalysts-curated";
 import { syntheticFor } from "./catalysts-fallback";
-import { findTicker } from "./tickers";
+import { resolveTicker, isCurated } from "./universe";
 
-// --- "Today" anchor.
-// In production we'd use the literal Date.now(). To make demos consistent
-// for May 2026, we expose an override hook.
+const MONTHLY_OPEX_2026 = ["2026-05-15", "2026-06-19", "2026-07-17", "2026-08-21"];
+
+function genericOpexCatalysts(ticker: string): Catalyst[] {
+  return MONTHLY_OPEX_2026.map((date) => ({
+    id: `opex:${ticker}:${date}`,
+    ticker,
+    category: "options-expiry" as const,
+    date,
+    title: "Monthly options expiry",
+    summary: "Standard third-Friday expiry — pin risk into close on high-OI strikes.",
+    impact: 0.012,
+    confirmed: true,
+    source: "Curated" as const,
+  }));
+}
+
 export function today(): Date {
   if (process.env.EC_TODAY_OVERRIDE) {
     return parseISO(process.env.EC_TODAY_OVERRIDE);
@@ -29,8 +42,10 @@ export async function getTickerCatalysts(
   ticker: string
 ): Promise<TickerCatalystSet | null> {
   const upper = ticker.trim().toUpperCase();
-  const entry = findTicker(upper);
+  const entry = resolveTicker(upper);
   if (!entry) return null;
+
+  const curatedName = isCurated(upper);
 
   const now = today();
   const fromISO = toISO(now);
@@ -42,7 +57,6 @@ export async function getTickerCatalysts(
     if (!seen.has(k)) seen.set(k, c);
   };
 
-  // Pull live first if configured.
   let usedLive = false;
   if (isFinnhubConfigured()) {
     try {
@@ -54,20 +68,23 @@ export async function getTickerCatalysts(
       div.forEach(push);
       usedLive = earn.length > 0 || div.length > 0;
     } catch {
-      // fall through to curated
+      // fall through
     }
   }
 
-  // Curated specials always layer on top.
-  curatedFor(upper).forEach(push);
+  if (curatedName) {
+    curatedFor(upper).forEach(push);
+  }
 
-  // Fallback synthetic earnings/dividends — only if live not used.
-  if (!usedLive) {
+  if (curatedName && !usedLive) {
     syntheticFor(upper).forEach(push);
   }
 
+  if (!curatedName && !usedLive) {
+    genericOpexCatalysts(upper).forEach(push);
+  }
+
   const all = Array.from(seen.values());
-  // Filter to forward window only.
   const fromDate = stripTime(now);
   const toDate = addDays(fromDate, 90);
   const upcoming = all
@@ -77,8 +94,6 @@ export async function getTickerCatalysts(
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // History: last 4 earnings reactions if surfaced via fallback meta.
-  // For demo, derive from synthetic config.
   const synth = syntheticFor(upper).find((c) => c.category === "earnings");
   const history = (synth?.meta?.last4Reactions ?? []).map((mv, i) => ({
     date: toISO(addDays(now, -90 * (4 - i))),
