@@ -36,7 +36,7 @@ export default function DensityScore({ score, phase, count30, count90 }: Props) 
   const largeArc = angle > 180 ? 1 : 0;
 
   return (
-    <div className="w-full max-w-[420px] mx-auto">
+    <div className="w-full max-w-[340px] mx-auto">
       <svg viewBox="0 0 200 80" className="w-full" aria-hidden>
         {/* Track */}
         <path

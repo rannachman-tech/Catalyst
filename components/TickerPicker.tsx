@@ -29,8 +29,19 @@ export default function TickerPicker({
   autoFocus,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
+  // q is the displayed text. Initialised from value, then user controls it.
+  // On pick(), we sync q to the ticker. Backspacing all the way clears it
+  // and stays cleared (no prop-fallback restore — fixes the delete-bug).
+  const [q, setQ] = useState(value || "");
   const [active, setActive] = useState(0);
+  const [touched, setTouched] = useState(false);
+
+  // External resets — when value changes from outside (e.g. recents list click),
+  // adopt it into q UNLESS the user is currently typing.
+  useEffect(() => {
+    if (!touched && value && q !== value) setQ(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   const [remoteHits, setRemoteHits] = useState<SearchHit[]>([]);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,7 +53,7 @@ export default function TickerPicker({
   }, [autoFocus]);
 
   const localHits = useMemo<SearchHit[]>(() => {
-    if (!q.trim()) {
+    if (!touched || !q.trim()) {
       return recents
         .map((t) => findTicker(t))
         .filter((x): x is TickerEntry => !!x)
@@ -64,10 +75,11 @@ export default function TickerPicker({
       curated: true,
       sector: t.sector,
     }));
-  }, [q, recents]);
+  }, [q, recents, touched]);
 
   useEffect(() => {
-    if (!q.trim() || q.trim().length < 1) {
+    // Only search when the user is actively editing — picked names don't refetch.
+    if (!touched || !q.trim()) {
       setRemoteHits([]);
       return;
     }
@@ -113,7 +125,8 @@ export default function TickerPicker({
 
   function pick(t: SearchHit) {
     onChange(t.ticker);
-    setQ("");
+    setQ(t.ticker);
+    setTouched(false);
     setOpen(false);
     setActive(0);
   }
@@ -125,9 +138,10 @@ export default function TickerPicker({
         <input
           ref={inputRef}
           type="text"
-          value={q || value || ""}
+          value={q}
           onChange={(e) => {
             setQ(e.target.value);
+            setTouched(true);
             setOpen(true);
             setActive(0);
           }}
@@ -152,10 +166,11 @@ export default function TickerPicker({
           autoComplete="off"
           spellCheck={false}
         />
-        {(q || value) && (
+        {q && (
           <button
             onClick={() => {
               setQ("");
+              setTouched(true);
               onChange("");
               inputRef.current?.focus();
             }}

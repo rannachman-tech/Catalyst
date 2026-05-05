@@ -37,11 +37,11 @@ export default function IndicatorsGrid({ ticker, catalysts, density, asOf }: Pro
       : null;
 
   return (
-    <section className="mt-6 sm:mt-8">
-      <div className="mb-3 text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
+    <section className="mt-4 sm:mt-5">
+      <div className="mb-2 text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
         Indicators · {ticker}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <Indicator
           icon={CalendarClock}
           label="Next event"
@@ -117,12 +117,12 @@ function Indicator({
   accent?: "good" | "bad";
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-3.5">
-      <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
+    <div className="rounded-md border border-border bg-surface p-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.16em] text-fg-subtle">
         <Icon className="h-3 w-3" /> {label}
       </div>
       <div
-        className="mt-1 text-[20px] font-semibold leading-none"
+        className="mt-1 text-[17px] font-semibold leading-none"
         style={{
           color:
             accent === "good"
@@ -134,7 +134,7 @@ function Indicator({
       >
         {primary}
       </div>
-      {secondary && <div className="mt-1.5 text-[11px] text-fg-subtle">{secondary}</div>}
+      {secondary && <div className="mt-1 text-[10.5px] text-fg-subtle">{secondary}</div>}
     </div>
   );
 }

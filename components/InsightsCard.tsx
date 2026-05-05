@@ -17,7 +17,6 @@ interface Props {
   bigSentence: string;
   catalysts: Catalyst[];
   asOf: string;
-  mode: "plain" | "pro";
   className?: string;
 }
 
@@ -27,14 +26,11 @@ export default function InsightsCard({
   bigSentence,
   catalysts,
   asOf,
-  mode,
   className = "",
 }: Props) {
   if (!catalysts) {
     return (
-      <section
-        className={`rounded-lg border border-border bg-surface p-4 sm:p-5 ${className}`}
-      >
+      <section className={"rounded-lg border border-border bg-surface p-4 sm:p-5 " + className}>
         <h2 className="text-base font-semibold">Insights</h2>
         <p className="mt-2 text-[12px] text-fg-subtle">Loading…</p>
       </section>
@@ -43,12 +39,10 @@ export default function InsightsCard({
 
   const today = parseISO(asOf);
   const next = catalysts[0];
-  const insights = buildInsights({ ticker, phase, catalysts, today, mode });
+  const insights = buildInsights({ ticker, phase, catalysts, today });
 
   return (
-    <section
-      className={`rounded-lg border border-border bg-surface p-4 sm:p-5 ${className}`}
-    >
+    <section className={"rounded-lg border border-border bg-surface p-3.5 sm:p-4 " + className}>
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
           Insights
@@ -56,16 +50,16 @@ export default function InsightsCard({
         <PhaseBadge phase={phase} />
       </div>
 
-      <p className="mt-3 text-[18px] sm:text-[20px] leading-tight font-semibold text-fg">
+      <p className="mt-2.5 text-[16px] sm:text-[18px] leading-snug font-semibold text-fg">
         {bigSentence}
       </p>
 
-      <p className="mt-2 text-[13px] text-fg-muted leading-relaxed">
+      <p className="mt-1.5 text-[12.5px] text-fg-muted leading-relaxed">
         {phaseAction(phase)}
       </p>
 
       {next && (
-        <div className="mt-4 rounded-md border border-border bg-bg p-3">
+        <div className="mt-3 rounded-md border border-border bg-bg p-2.5">
           <div className="text-[10px] uppercase font-mono tracking-[0.16em] text-fg-subtle">
             Next event · {humanDate(next.date)}
           </div>
@@ -81,7 +75,7 @@ export default function InsightsCard({
       )}
 
       {insights.length > 0 && (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-3 space-y-1.5">
           {insights.map((it, i) => (
             <li key={i} className="flex gap-2 text-[12.5px] text-fg-muted leading-relaxed">
               <Lightbulb className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-accent" aria-hidden />
@@ -116,13 +110,11 @@ function buildInsights({
   phase,
   catalysts,
   today,
-  mode,
 }: {
   ticker: string;
   phase: Phase;
   catalysts: Catalyst[];
   today: Date;
-  mode: "plain" | "pro";
 }): string[] {
   const out: string[] = [];
 
@@ -134,55 +126,36 @@ function buildInsights({
 
   if (earnings && daysBetween(today, parseISO(earnings.date)) <= 21) {
     const im = earnings.meta?.impliedMove;
-    if (mode === "plain") {
-      out.push(
-        `${ticker} reports earnings ${humanDate(earnings.date)}. The options market is pricing roughly ${
-          im ? "±" + (im * 100).toFixed(0) + "%" : "an outsized"
-        } move on the day.`
-      );
-    } else {
-      out.push(
-        `Earnings ${humanDate(earnings.date)} · ATM straddle implies ±${
-          im ? (im * 100).toFixed(1) : "?"
-        }% · last 4 day-of moves visible in card.`
-      );
-    }
+    out.push(
+      ticker + " reports earnings " + humanDate(earnings.date) + " — front-month straddle implies " +
+      (im ? "±" + (im * 100).toFixed(1) + "%" : "an outsized move") + " on the day."
+    );
   }
 
   if (fda && daysBetween(today, parseISO(fda.date)) <= 45) {
+    const drug = fda.meta?.drugCandidate ?? fda.title.replace("PDUFA: ", "");
+    const ind = fda.meta?.indication ? " (" + fda.meta.indication + ")" : "";
     out.push(
-      mode === "plain"
-        ? `An FDA decision (${fda.title.replace("PDUFA: ", "")}) is due ${humanDate(fda.date)} — these tend to be binary moves on the day.`
-        : `PDUFA ${humanDate(fda.date)} · ${fda.meta?.drugCandidate ?? ""} ${
-            fda.meta?.indication ? "(" + fda.meta.indication + ")" : ""
-          } · binary catalyst.`
+      "PDUFA " + humanDate(fda.date) + " · " + drug + ind + " — binary FDA catalyst, day-of move tends to be large."
     );
   }
 
   if (product && daysBetween(today, parseISO(product.date)) <= 21) {
-    out.push(
-      mode === "plain"
-        ? `${product.meta?.eventName ?? "A major product event"} lands ${humanDate(product.date)} — keynote vol can persist beyond the day.`
-        : `Product event ${humanDate(product.date)} · ${product.meta?.eventName ?? product.title}.`
-    );
+    const ev = product.meta?.eventName ?? product.title;
+    out.push(ev + " lands " + humanDate(product.date) + " — keynote vol often persists beyond the day.");
   }
 
   if (phase === "quiet" && next) {
-    out.push(
-      mode === "plain"
-        ? `Calendar is light. The next event is ${humanDate(next.date)} — a ${next.title.toLowerCase()}.`
-        : `Quiet 30d window · next event ${humanDate(next.date)} (${next.category}).`
-    );
+    out.push("Calendar is light — next event " + humanDate(next.date) + " (" + next.title.toLowerCase() + ").");
   }
 
   if (div && daysBetween(today, parseISO(div.date)) <= 14) {
     out.push(
-      `Ex-div ${humanDate(div.date)}${
-        div.meta?.amount !== undefined ? ` · $${div.meta.amount.toFixed(2)}/share` : ""
-      }. Held shares need to be on the books before that date to receive the payment.`
+      "Ex-div " + humanDate(div.date) +
+      (div.meta?.amount !== undefined ? " · $" + div.meta.amount.toFixed(2) + "/share" : "") +
+      " — must hold before this date to receive the payment."
     );
   }
 
-  // Always cap at 3 — keep card tight
   return out.slice(0, 3);
 }
