@@ -2,7 +2,7 @@
 // 9-section simulator. Catches whole classes of bugs at design time.
 
 import { TICKERS, type TickerEntry } from "../lib/tickers";
-import { basketFor, allocate } from "../lib/baskets";
+import { basketFor, hedgeBasket, allocate } from "../lib/baskets";
 import {
   densityScore,
   phaseFor,
@@ -42,17 +42,22 @@ for (const t of TICKERS) {
       fail(`Weights sum ${sum} for ${t.ticker}/${p}`);
       invariantBad++;
     }
-    if (b.holdings.length < 2 || b.holdings.length > 8)
+    if (b.holdings.length < 1 || b.holdings.length > 8)
       fail(`Holdings count ${b.holdings.length} for ${t.ticker}/${p}`);
     const ids = b.holdings.map((h) => h.instrumentId);
     if (new Set(ids).size !== ids.length)
       fail(`Duplicate instrumentId in ${t.ticker}/${p}`);
     for (const h of b.holdings) {
       if (h.instrumentId <= 0) fail(`Bad instrumentId ${h.instrumentId} in ${t.ticker}/${p}`);
-      if (h.weight <= 0 || h.weight > 80)
+      if (h.weight <= 0 || h.weight > 100)
         fail(`Bad weight ${h.weight} for ${h.ticker} in ${t.ticker}/${p}`);
     }
   }
+  // Also validate the hedge variant — 4 holdings, all weights ≤ 55%
+  const hb = hedgeBasket(t, "heavy");
+  if (hb.holdings.length !== 4) fail(`Hedge holdings ${hb.holdings.length} != 4 for ${t.ticker}`);
+  const hbMax = Math.max(...hb.holdings.map((h) => h.weight));
+  if (hbMax > 55) fail(`Hedge max weight ${hbMax} > 55 for ${t.ticker}`);
 }
 if (invariantBad === 0) pass("All weights, sizes, IDs valid");
 
@@ -154,28 +159,25 @@ const score = densityScore(synth, today);
 if (score < 60) fail(`Synthetic heavy block produced score ${score} < 60`);
 else pass(`Heavy synthetic = ${score} (heavy)`);
 
-// 9) defensive properties
+// 9) defensive properties — direct basket = 100% underlying;
+//    hedge variant = 50% underlying max
 console.log("\n[9] Defensive properties");
 let defBad = 0;
 for (const t of TICKERS as TickerEntry[]) {
-  for (const p of PHASES) {
-    const b = basketFor(t, p);
-    const maxW = Math.max(...b.holdings.map((h) => h.weight));
-    // For heavy, no single position should exceed 50%
-    if (p === "heavy" && maxW > 50) {
-      fail(`Heavy basket for ${t.ticker} has max weight ${maxW} > 50`);
-      defBad++;
-    }
-    // For quiet, the underlying should be the dominant position
-    if (p === "quiet") {
-      const underlying = b.holdings.find((h) => h.ticker === t.ticker);
-      if (!underlying) fail(`Quiet basket for ${t.ticker} missing underlying`);
-      else if (underlying.weight < 60)
-        fail(`Quiet basket for ${t.ticker}: underlying only ${underlying.weight}%`);
-    }
+  const direct = basketFor(t, "quiet");
+  const hb = hedgeBasket(t, "heavy");
+  const directUnderlying = direct.holdings.find((h) => h.ticker === t.ticker);
+  if (!directUnderlying || directUnderlying.weight !== 100) {
+    fail(`Direct basket for ${t.ticker}: underlying weight is ${directUnderlying?.weight}, expected 100`);
+    defBad++;
+  }
+  const hedgeUnderlying = hb.holdings.find((h) => h.ticker === t.ticker);
+  if (!hedgeUnderlying || hedgeUnderlying.weight !== 50) {
+    fail(`Hedge basket for ${t.ticker}: underlying weight is ${hedgeUnderlying?.weight}, expected 50`);
+    defBad++;
   }
 }
-if (defBad === 0) pass("Concentration limits respected across all baskets");
+if (defBad === 0) pass("Direct = 100% underlying; hedge = 50% underlying + 50% defensive");
 
 console.log("");
 if (failures > 0) {

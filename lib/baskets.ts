@@ -1,17 +1,17 @@
-// Trade baskets for the "Trade-on-eToro" CTA.
+// Trade baskets — stock-first, hedge as opt-in.
 //
-// Two basket templates — built dynamically per ticker:
-//   - QUIET / MODERATE → "Accumulate" basket: 80% the ticker itself + 20% complement
-//   - HEAVY            → "Defensive overlay" basket: 50% ticker + 50% hedge mix
+// Default action for any phase: 100% the underlying. We don't dilute the
+// thesis with a sector "complement" — if the user came to buy COIN, sell
+// them COIN, not COIN+MARA.
 //
-// All instrumentIds are pre-resolved from the eToro public catalog
-// (see lib/tickers.ts and HEDGE_ETFS).
+// When the user opts in to a hedge overlay (typically prompted on Heavy
+// phases), the basket becomes 50% underlying + 50% defensive sleeve
+// (volatility, treasuries, sector defensive). That's a coherent overlay
+// strategy used by event-driven traders.
 
 import type { Phase } from "./catalysts";
 import type { TickerEntry } from "./tickers";
 import { HEDGE_ETFS, TICKERS } from "./tickers";
-
-const CURATED_IDS = new Set(TICKERS.map((t) => t.instrumentId));
 
 export interface BasketHolding {
   ticker: string;
@@ -26,9 +26,79 @@ export interface BasketHolding {
 export interface Basket {
   ticker: string;
   phase: Phase;
+  hedge: boolean;          // true = with overlay, false = direct
   title: string;
   thesis: string;
   holdings: BasketHolding[];
+}
+
+// ---- Direct basket: 100% underlying ----
+export function directBasket(ticker: TickerEntry, phase: Phase): Basket {
+  return {
+    ticker: ticker.ticker,
+    phase,
+    hedge: false,
+    title: `Buy ${ticker.ticker}`,
+    thesis: `Direct exposure to ${ticker.name}.`,
+    holdings: [
+      {
+        ticker: ticker.ticker,
+        symbolFull: ticker.symbolFull,
+        instrumentId: ticker.instrumentId,
+        name: ticker.name,
+        weight: 100,
+        shortRationale: "Direct buy.",
+        longRationale: `100% of the order goes to ${ticker.name}.`,
+      },
+    ],
+  };
+}
+
+// ---- Hedge overlay: 50% underlying + 50% defensive sleeve ----
+export function hedgeBasket(ticker: TickerEntry, phase: Phase): Basket {
+  const [vxx, tlt, sect] = hedgeETFs(ticker.sector);
+  return {
+    ticker: ticker.ticker,
+    phase,
+    hedge: true,
+    title: `${ticker.ticker} with defensive overlay`,
+    thesis: `Half-sized core in ${ticker.name} paired with volatility, treasuries, and a defensive sector sleeve. Designed for weeks where one rough catalyst could dominate the book.`,
+    holdings: [
+      {
+        ticker: ticker.ticker,
+        symbolFull: ticker.symbolFull,
+        instrumentId: ticker.instrumentId,
+        name: ticker.name,
+        weight: 50,
+        shortRationale: "Smaller core through the event window.",
+        longRationale: `Keeps directional exposure to ${ticker.name} but at half size while the catalyst window is heaviest.`,
+      },
+      {
+        ticker: vxx.ticker, symbolFull: vxx.symbolFull, instrumentId: vxx.instrumentId, name: vxx.name,
+        weight: 15,
+        shortRationale: "Vol spike hedge.",
+        longRationale: "VIX-future ETN that gains when realised vol rises around catalyst dates.",
+      },
+      {
+        ticker: tlt.ticker, symbolFull: tlt.symbolFull, instrumentId: tlt.instrumentId, name: tlt.name,
+        weight: 15,
+        shortRationale: "Risk-off bid.",
+        longRationale: "Long-duration Treasuries — flight-to-quality bid when equity vol pops.",
+      },
+      {
+        ticker: sect.ticker, symbolFull: sect.symbolFull, instrumentId: sect.instrumentId, name: sect.name,
+        weight: 20,
+        shortRationale: "Defensive sector sleeve.",
+        longRationale: "Lower-beta sleeve that historically holds better than broad equity during single-name event vol.",
+      },
+    ],
+  };
+}
+
+// Public dispatcher — kept for backwards compat with the simulator.
+export function basketFor(ticker: TickerEntry, phase: Phase, withHedge = false): Basket {
+  if (withHedge) return hedgeBasket(ticker, phase);
+  return directBasket(ticker, phase);
 }
 
 function hedgeETFs(sector: TickerEntry["sector"]): typeof HEDGE_ETFS {
@@ -42,136 +112,11 @@ function hedgeETFs(sector: TickerEntry["sector"]): typeof HEDGE_ETFS {
 
   let sectorHedge = staples;
   if (sector === "Healthcare") sectorHedge = healthcare;
-  else if (sector === "Energy" || sector === "Materials" || sector === "Industrials")
-    sectorHedge = utilities;
+  else if (sector === "Energy" || sector === "Materials" || sector === "Industrials") sectorHedge = utilities;
   else if (sector === "Financials") sectorHedge = sh;
   else if (sector === "Crypto-Adj") sectorHedge = gold;
 
   return [vxx, tlt, sectorHedge];
-}
-
-export function basketFor(ticker: TickerEntry, phase: Phase): Basket {
-  if (phase === "heavy") {
-    const [vxx, tlt, sect] = hedgeETFs(ticker.sector);
-    return {
-      ticker: ticker.ticker,
-      phase,
-      title: `Defensive overlay around ${ticker.ticker}`,
-      thesis: `${ticker.ticker} has heavy event risk in the next 30 days. This basket keeps a smaller core position (50%) and pairs it with volatility, treasury, and a defensive sleeve so a rough catalyst doesn't dominate the book.`,
-      holdings: [
-        {
-          ticker: ticker.ticker,
-          symbolFull: ticker.symbolFull,
-          instrumentId: ticker.instrumentId,
-          name: ticker.name,
-          weight: 50,
-          shortRationale: "Smaller core through the event window.",
-          longRationale: `Keeps directional exposure to ${ticker.name} but at half size while the catalyst window is heaviest.`,
-        },
-        {
-          ticker: vxx.ticker, symbolFull: vxx.symbolFull, instrumentId: vxx.instrumentId, name: vxx.name,
-          weight: 15,
-          shortRationale: "Vol spike hedge.",
-          longRationale: "VIX-future ETN that gains when realised vol rises around catalyst dates.",
-        },
-        {
-          ticker: tlt.ticker, symbolFull: tlt.symbolFull, instrumentId: tlt.instrumentId, name: tlt.name,
-          weight: 15,
-          shortRationale: "Risk-off bid.",
-          longRationale: "Long-duration Treasuries — flight-to-quality bid when equity vol pops.",
-        },
-        {
-          ticker: sect.ticker, symbolFull: sect.symbolFull, instrumentId: sect.instrumentId, name: sect.name,
-          weight: 20,
-          shortRationale: "Defensive sector sleeve.",
-          longRationale: "Lower-beta sleeve that historically holds better than broad equity during single-name event vol.",
-        },
-      ],
-    };
-  }
-
-  const complement = pickComplement(ticker);
-  return {
-    ticker: ticker.ticker,
-    phase,
-    title:
-      phase === "quiet"
-        ? `Accumulate ${ticker.ticker}`
-        : `Hold ${ticker.ticker} with light complement`,
-    thesis:
-      phase === "quiet"
-        ? `${ticker.ticker} is in a quiet stretch — low event risk over the next 30 days. Bias is to add or hold.`
-        : `${ticker.ticker} has a moderate calendar. Keep core exposure, trim leverage close to dates.`,
-    holdings: [
-      {
-        ticker: ticker.ticker,
-        symbolFull: ticker.symbolFull,
-        instrumentId: ticker.instrumentId,
-        name: ticker.name,
-        weight: phase === "quiet" ? 80 : 70,
-        shortRationale: phase === "quiet" ? "Add to core." : "Keep core.",
-        longRationale: `The 30-day calendar for ${ticker.name} is ${
-          phase === "quiet" ? "clear" : "manageable"
-        }. The bulk of the basket sits in the underlying.`,
-      },
-      {
-        ticker: complement.ticker,
-        symbolFull: complement.symbolFull,
-        instrumentId: complement.instrumentId,
-        name: complement.name,
-        weight: phase === "quiet" ? 20 : 30,
-        shortRationale: "Sector complement.",
-        longRationale: `Liquid same-sector name to spread idiosyncratic risk while keeping the thesis intact.`,
-      },
-    ],
-  };
-}
-
-const BROAD_FALLBACK: TickerEntry = {
-  ticker: "VTI",
-  symbolFull: "VTI",
-  instrumentId: 4237,
-  name: "Vanguard Total Stock Market ETF",
-  sector: "Tech",
-  country: "US",
-};
-
-function pickComplement(t: TickerEntry): TickerEntry {
-  if (t.ticker === "VTI") return BROAD_FALLBACK;
-  if (!CURATED_IDS.has(t.instrumentId)) return BROAD_FALLBACK;
-  const PRIMARY: Record<TickerEntry["sector"], TickerEntry> = {
-    Tech: { ticker: "MSFT", symbolFull: "MSFT", instrumentId: 1004, name: "Microsoft", sector: "Tech", country: "US" },
-    Semis: { ticker: "AVGO", symbolFull: "AVGO", instrumentId: 4236, name: "Broadcom", sector: "Semis", country: "US" },
-    Comm: { ticker: "GOOG", symbolFull: "GOOG", instrumentId: 1002, name: "Alphabet C", sector: "Comm", country: "US" },
-    "Consumer-Disc": { ticker: "AMZN", symbolFull: "AMZN", instrumentId: 1005, name: "Amazon.com", sector: "Consumer-Disc", country: "US" },
-    "Consumer-Staples": { ticker: "COST", symbolFull: "COST", instrumentId: 1461, name: "Costco", sector: "Consumer-Staples", country: "US" },
-    Healthcare: { ticker: "JNJ", symbolFull: "JNJ", instrumentId: 1022, name: "Johnson & Johnson", sector: "Healthcare", country: "US" },
-    Financials: { ticker: "JPM", symbolFull: "JPM", instrumentId: 1023, name: "JPMorgan Chase", sector: "Financials", country: "US" },
-    Energy: { ticker: "XOM", symbolFull: "XOM", instrumentId: 1036, name: "Exxon-Mobil", sector: "Energy", country: "US" },
-    Industrials: { ticker: "CAT", symbolFull: "CAT", instrumentId: 1012, name: "Caterpillar", sector: "Industrials", country: "US" },
-    Materials: { ticker: "CAT", symbolFull: "CAT", instrumentId: 1012, name: "Caterpillar", sector: "Industrials", country: "US" },
-    Utilities: { ticker: "XLU", symbolFull: "XLU", instrumentId: 3013, name: "Utilities Select Sector SPDR", sector: "Utilities", country: "US" },
-    "Real-Estate": { ticker: "XLU", symbolFull: "XLU", instrumentId: 3013, name: "Utilities Select Sector SPDR", sector: "Utilities", country: "US" },
-    "Crypto-Adj": { ticker: "COIN", symbolFull: "COIN", instrumentId: 6168, name: "Coinbase", sector: "Crypto-Adj", country: "US" },
-  };
-  const FALLBACK: Record<TickerEntry["sector"], TickerEntry> = {
-    Tech: { ticker: "GOOG", symbolFull: "GOOG", instrumentId: 1002, name: "Alphabet C", sector: "Comm", country: "US" },
-    Semis: { ticker: "TSM", symbolFull: "TSM", instrumentId: 4481, name: "Taiwan Semiconductor", sector: "Semis", country: "TW" },
-    Comm: { ticker: "META", symbolFull: "META", instrumentId: 1003, name: "Meta Platforms", sector: "Comm", country: "US" },
-    "Consumer-Disc": { ticker: "MCD", symbolFull: "MCD", instrumentId: 1025, name: "McDonald's", sector: "Consumer-Disc", country: "US" },
-    "Consumer-Staples": { ticker: "WMT", symbolFull: "WMT", instrumentId: 1035, name: "Walmart", sector: "Consumer-Staples", country: "US" },
-    Healthcare: { ticker: "UNH", symbolFull: "UNH", instrumentId: 1032, name: "UnitedHealth", sector: "Healthcare", country: "US" },
-    Financials: { ticker: "BAC", symbolFull: "BAC", instrumentId: 1011, name: "Bank of America", sector: "Financials", country: "US" },
-    Energy: { ticker: "CVX", symbolFull: "CVX.US", instrumentId: 1014, name: "Chevron", sector: "Energy", country: "US" },
-    Industrials: { ticker: "GE", symbolFull: "GE", instrumentId: 1017, name: "General Electric", sector: "Industrials", country: "US" },
-    Materials: { ticker: "GE", symbolFull: "GE", instrumentId: 1017, name: "General Electric", sector: "Industrials", country: "US" },
-    Utilities: { ticker: "XLP", symbolFull: "XLP", instrumentId: 3022, name: "Consumer Staples Select Sector SPDR", sector: "Consumer-Staples", country: "US" },
-    "Real-Estate": { ticker: "XLP", symbolFull: "XLP", instrumentId: 3022, name: "Consumer Staples Select Sector SPDR", sector: "Consumer-Staples", country: "US" },
-    "Crypto-Adj": { ticker: "MARA", symbolFull: "MARA", instrumentId: 6244, name: "Marathon Digital", sector: "Crypto-Adj", country: "US" },
-  };
-  const primary = PRIMARY[t.sector];
-  if (primary.instrumentId !== t.instrumentId) return primary;
-  return FALLBACK[t.sector];
 }
 
 export function allocate(b: Basket, amount: number) {
@@ -181,13 +126,14 @@ export function allocate(b: Basket, amount: number) {
   }));
 }
 
+// Used by verify-baskets — emits both direct and hedge variants for every ticker.
 export function allHoldings(tickers: TickerEntry[]): BasketHolding[] {
   const out: BasketHolding[] = [];
   for (const t of tickers) {
-    for (const phase of ["quiet", "moderate", "heavy"] as Phase[]) {
-      const b = basketFor(t, phase);
-      out.push(...b.holdings);
-    }
+    out.push(...directBasket(t, "quiet").holdings);
+    out.push(...hedgeBasket(t, "heavy").holdings);
   }
   return out;
 }
+
+void TICKERS;

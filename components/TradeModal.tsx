@@ -8,13 +8,17 @@ import {
   Check,
   AlertCircle,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Wallet,
+  ShieldCheck,
 } from "lucide-react";
 import {
   type Basket,
   type BasketHolding,
   allocate,
-  basketFor,
+  directBasket,
+  hedgeBasket,
 } from "@/lib/baskets";
 import type { Phase } from "@/lib/catalysts";
 import type { TickerEntry } from "@/lib/tickers";
@@ -47,6 +51,8 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
   const [session, setSession] = useState<EtoroSession | null>(null);
   const [step, setStep] = useState<Step>("review");
   const [amount, setAmount] = useState(500);
+  const [withHedge, setWithHedge] = useState(false);
+  const [hedgeExpanded, setHedgeExpanded] = useState(phase === "heavy");
   const [results, setResults] = useState<TradeResultRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -58,7 +64,10 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
     return onEtoroChange(() => setSession(getEtoroSession()));
   }, []);
 
-  const basket: Basket = useMemo(() => basketFor(ticker, phase), [ticker, phase]);
+  const basket: Basket = useMemo(
+    () => (withHedge ? hedgeBasket(ticker, phase) : directBasket(ticker, phase)),
+    [ticker, phase, withHedge]
+  );
   const allocated = useMemo(() => allocate(basket, amount), [basket, amount]);
   const total = allocated.reduce((a, b) => a + b.dollars, 0);
 
@@ -81,8 +90,11 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
       setStep("review");
       setResults([]);
       setError(null);
+      // Reset hedge toggle on each open: heavy → expanded but not enabled by default
+      setWithHedge(false);
+      setHedgeExpanded(phase === "heavy");
     }
-  }, [open]);
+  }, [open, phase]);
 
   if (!open || !mounted) return null;
 
@@ -123,10 +135,12 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
     }
   }
 
+  const heavyPhase = phase === "heavy";
+
   const node = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55">
       <div
-        className="w-full max-w-xl rounded-lg border border-border bg-surface text-fg shadow-2xl flex flex-col max-h-[92vh]"
+        className="w-full max-w-lg rounded-lg border border-border bg-surface text-fg shadow-2xl flex flex-col max-h-[92vh]"
         role="dialog"
         aria-modal
       >
@@ -134,10 +148,12 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
           <div>
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-accent" />
-              <h2 className="text-base font-semibold">{basket.title}</h2>
+              <h2 className="text-base font-semibold">{withHedge ? basket.title : `Buy ${ticker.ticker}`}</h2>
             </div>
             <p className="mt-1 text-[12px] text-fg-subtle leading-relaxed">
-              {basket.thesis}
+              {withHedge
+                ? basket.thesis
+                : `Direct buy of ${ticker.name}. Single position on eToro.`}
             </p>
           </div>
           <button
@@ -157,6 +173,12 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
               amount={amount}
               setAmount={setAmount}
               session={session}
+              ticker={ticker}
+              withHedge={withHedge}
+              setWithHedge={setWithHedge}
+              hedgeExpanded={hedgeExpanded}
+              setHedgeExpanded={setHedgeExpanded}
+              heavyPhase={heavyPhase}
             />
           )}
           {step === "confirm" && <Confirm allocated={allocated} total={total} session={session} />}
@@ -173,7 +195,7 @@ export default function TradeModal({ open, onClose, ticker, phase }: Props) {
           {step === "review" && (
             <>
               <span className="text-[11px] text-fg-subtle">
-                Holdings sized to ${amount.toLocaleString()}
+                Sized to ${amount.toLocaleString()}
               </span>
               <div className="flex gap-2">
                 <button
@@ -233,11 +255,23 @@ function Review({
   amount,
   setAmount,
   session,
+  ticker,
+  withHedge,
+  setWithHedge,
+  hedgeExpanded,
+  setHedgeExpanded,
+  heavyPhase,
 }: {
   allocated: Array<BasketHolding & { dollars: number }>;
   amount: number;
   setAmount: (v: number) => void;
   session: EtoroSession | null;
+  ticker: TickerEntry;
+  withHedge: boolean;
+  setWithHedge: (v: boolean) => void;
+  hedgeExpanded: boolean;
+  setHedgeExpanded: (v: boolean) => void;
+  heavyPhase: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -279,7 +313,57 @@ function Review({
         </div>
       </div>
 
-      <AllocationTable allocated={allocated} />
+      <AllocationTable allocated={allocated} ticker={ticker} />
+
+      {/* Hedge overlay opt-in */}
+      <div
+        className={`rounded-md border ${
+          heavyPhase ? "border-cat-opt/40 bg-cat-opt/8" : "border-border bg-bg"
+        }`}
+      >
+        <button
+          onClick={() => setHedgeExpanded(!hedgeExpanded)}
+          className="fr w-full flex items-center justify-between gap-3 p-3 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <ShieldCheck
+              className={`h-4 w-4 ${heavyPhase ? "text-cat-opt" : "text-fg-subtle"}`}
+            />
+            <div>
+              <div className="text-[13px] font-medium text-fg">
+                {heavyPhase ? "Heavy week — add a defensive overlay?" : "Add a defensive overlay (optional)"}
+              </div>
+              <div className="text-[11px] text-fg-subtle mt-0.5">
+                Halves the {ticker.ticker} position and pairs it with vol + treasuries + a sector hedge.
+              </div>
+            </div>
+          </div>
+          {hedgeExpanded ? (
+            <ChevronUp className="h-4 w-4 text-fg-subtle flex-shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-fg-subtle flex-shrink-0" />
+          )}
+        </button>
+        {hedgeExpanded && (
+          <div className="px-3 pb-3 fade-in">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={withHedge}
+                onChange={(e) => setWithHedge(e.target.checked)}
+                className="fr mt-1 h-4 w-4 rounded border-border accent-accent"
+              />
+              <span className="text-[12px] text-fg-muted leading-relaxed">
+                Use the overlay basket. {ticker.ticker} sized to 50% of your amount; the other 50% goes to{" "}
+                <span className="font-mono">VXX</span> (15%),{" "}
+                <span className="font-mono">TLT</span> (15%), and a{" "}
+                <span className="font-mono">defensive sector ETF</span> (20%). Coherent for weeks where one
+                rough catalyst could dominate the book.
+              </span>
+            </label>
+          </div>
+        )}
+      </div>
 
       {!session && (
         <div className="flex items-center gap-2 rounded-md border border-cat-opt/40 bg-cat-opt/10 px-3 py-2 text-[12px] text-cat-opt">
@@ -304,7 +388,7 @@ function Confirm({
     <div className="space-y-4">
       <div className="rounded-md border border-border bg-bg p-4">
         <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
-          Confirm this basket
+          Confirm this order
         </div>
         <table className="mt-2 w-full text-[12.5px]">
           <thead>
@@ -345,9 +429,36 @@ function Confirm({
 
 function AllocationTable({
   allocated,
+  ticker,
 }: {
   allocated: Array<BasketHolding & { dollars: number }>;
+  ticker: TickerEntry;
 }) {
+  if (allocated.length === 1) {
+    const h = allocated[0];
+    return (
+      <div className="rounded-md border border-border bg-bg p-4">
+        <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-fg-subtle">
+          Order preview
+        </div>
+        <div className="mt-2 flex items-baseline justify-between gap-3">
+          <div>
+            <div className="font-mono text-[16px] font-semibold text-fg">{h.ticker}</div>
+            <div className="text-[12px] text-fg-subtle">{h.name}</div>
+          </div>
+          <div className="text-right">
+            <div className="font-mono text-[16px] font-semibold text-fg">
+              ${h.dollars.toFixed(2)}
+            </div>
+            <div className="text-[11px] text-fg-subtle">market buy</div>
+          </div>
+        </div>
+        <div className="mt-3 text-[11px] text-fg-subtle leading-relaxed">
+          Direct exposure to {ticker.name}. Order routes to eToro market-open at the next available price.
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="rounded-md border border-border bg-bg">
       <table className="w-full text-[12.5px]">
@@ -398,7 +509,6 @@ function ResultPanel({
       </div>
     );
   }
-
   return (
     <div className="rounded-md border border-border bg-bg">
       <table className="w-full text-[12.5px]">

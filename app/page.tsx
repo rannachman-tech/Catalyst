@@ -173,7 +173,7 @@ export default function Home() {
         {/* TICKER MODE */}
         {mode === "ticker" && (
           <>
-            <section className="mt-4 grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-3 lg:gap-4 items-stretch">
+            <section className="mt-4 grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-3 lg:gap-4 items-start">
               {/* LEFT — picker + centerpiece */}
               <div className="rounded-lg border border-border bg-surface p-3.5 sm:p-4 flex flex-col">
                 <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-fg-subtle">
@@ -250,17 +250,11 @@ export default function Home() {
                 {tickerEntry && summary && (
                   <ConnectEtoroCta
                     onTradeClick={() => setTradeOpen(true)}
-                    ctaLabel={
-                      summary.phase === "heavy"
-                        ? "Trade with hedge basket"
-                        : "Trade with basket"
-                    }
+                    ctaLabel={`Buy ${tickerEntry.ticker}`}
                     description={
                       summary.phase === "heavy"
-                        ? `${tickerEntry.ticker} is in a heavy week. The CTA opens a defensive basket: 50% ${tickerEntry.ticker} + 50% volatility, treasury, and a defensive sleeve.`
-                        : summary.phase === "moderate"
-                        ? `${tickerEntry.ticker} has a moderate calendar. The basket holds the underlying with a small same-sector complement.`
-                        : `${tickerEntry.ticker} is in a quiet stretch — the basket leans into the underlying with a small complement.`
+                        ? `${tickerEntry.ticker} is in a heavy week. The trade opens with a one-click buy and an optional defensive overlay (vol + treasuries + sector hedge) you can toggle on.`
+                        : `Direct buy of ${tickerEntry.name}. Optional hedge overlay available if you want to cut size and pair with vol + treasuries.`
                     }
                   />
                 )}

@@ -82,6 +82,8 @@ export default function PortfolioMode() {
         ok: boolean;
         positions?: Position[];
         error?: string;
+        debug?: Array<{ path: string; status?: number; rawCount?: number; topKeys?: string[]; error?: string }>;
+        note?: string;
       };
       if (!j.ok || !j.positions) {
         setError(j.error || "Could not load portfolio.");
@@ -90,6 +92,13 @@ export default function PortfolioMode() {
         return;
       }
       setPositions(j.positions);
+      // If we got an empty list with debug info, surface it as a soft note
+      if (j.positions.length === 0 && j.debug && j.debug.length > 0) {
+        const summary = j.debug
+          .map((d) => `${d.path.split("/").slice(-2).join("/")} → ${d.status ?? "?"} (raw=${d.rawCount ?? "—"}; keys=${(d.topKeys ?? []).join(",") || "none"})`)
+          .join(" · ");
+        setError(`No positions extracted. Tried: ${summary}`);
+      }
 
       // Pull catalysts for the position tickers
       if (j.positions.length === 0) {
