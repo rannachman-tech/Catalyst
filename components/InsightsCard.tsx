@@ -1,6 +1,6 @@
 "use client";
 
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, AlertTriangle, ShieldCheck, Eye } from "lucide-react";
 import {
   type Phase,
   type Catalyst,
@@ -89,17 +89,19 @@ export default function InsightsCard({
 }
 
 function PhaseBadge({ phase }: { phase: Phase }) {
-  const map: Record<Phase, { bg: string; fg: string; label: string }> = {
-    quiet: { bg: "rgb(var(--phase-quiet) / 0.14)", fg: "rgb(var(--phase-quiet))", label: "Quiet" },
-    moderate: { bg: "rgb(var(--phase-mod) / 0.14)", fg: "rgb(var(--phase-mod))", label: "Moderate" },
-    heavy: { bg: "rgb(var(--phase-heavy) / 0.14)", fg: "rgb(var(--phase-heavy))", label: "Heavy" },
+  const map: Record<Phase, { bg: string; fg: string; label: string; Icon: React.ComponentType<{ className?: string }> }> = {
+    quiet: { bg: "rgb(var(--phase-quiet) / 0.14)", fg: "rgb(var(--phase-quiet))", label: "Quiet", Icon: ShieldCheck },
+    moderate: { bg: "rgb(var(--phase-mod) / 0.14)", fg: "rgb(var(--phase-mod))", label: "Moderate", Icon: Eye },
+    heavy: { bg: "rgb(var(--phase-heavy) / 0.14)", fg: "rgb(var(--phase-heavy))", label: "Heavy", Icon: AlertTriangle },
   };
   const c = map[phase];
+  const Icon = c.Icon;
   return (
     <span
-      className="text-[10px] font-mono uppercase tracking-[0.18em] rounded px-1.5 py-0.5"
+      className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.18em] rounded px-1.5 py-1"
       style={{ background: c.bg, color: c.fg }}
     >
+      <Icon className="h-3 w-3" />
       {phaseHeadline(phase) || c.label}
     </span>
   );

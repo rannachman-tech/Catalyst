@@ -31,6 +31,9 @@ export interface Catalyst {
   // Whether the date is confirmed (true) or estimated (false).
   confirmed: boolean;
   source: Source;
+  // Public URL pointing to the source of this event. When present, the
+  // expanded card renders a "Verify on source" link — keeps us honest.
+  sourceUrl?: string;
   // Optional category-specific metadata.
   meta?: {
     impliedMove?: number;        // earnings: front-month straddle

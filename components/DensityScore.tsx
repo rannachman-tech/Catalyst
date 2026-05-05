@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Phase } from "@/lib/catalysts";
 
 interface Props {
@@ -22,9 +23,28 @@ const PHASE_LABEL: Record<Phase, string> = {
 };
 
 export default function DensityScore({ score, phase, count30, count90 }: Props) {
-  // SVG: 200x70 — semi-circular gauge with score, phase label, two counts
+  // Animate the score from 0 → target on first paint and on score changes.
+  const [displayed, setDisplayed] = useState(0);
+  useEffect(() => {
+    const start = displayed;
+    const target = Math.max(0, Math.min(100, Math.round(score)));
+    const startTs = performance.now();
+    const dur = 600;
+    let raf = 0;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - startTs) / dur);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplayed(Math.round(start + (target - start) * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [score]);
+
   const max = 100;
-  const angle = (Math.min(score, max) / max) * 180; // 0..180
+  const angle = (Math.min(displayed, max) / max) * 180;
 
   const cx = 100;
   const cy = 60;
@@ -66,11 +86,11 @@ export default function DensityScore({ score, phase, count30, count90 }: Props) 
           fontWeight="600"
           fill="rgb(var(--fg))"
         >
-          {Math.round(score)}
+          {displayed}
         </text>
       </svg>
       <div className="mt-2 flex items-center justify-center gap-3 text-[11px] font-mono uppercase tracking-[0.18em]">
-        <span style={{ color: `rgb(${PHASE_COLOR[phase]})` }}>{PHASE_LABEL[phase]}</span>
+        <span style={{ color: "rgb(" + PHASE_COLOR[phase] + ")" }}>{PHASE_LABEL[phase]}</span>
         <span className="text-fg-subtle">·</span>
         <span className="text-fg-subtle">
           {count30} in 30d · {count90} in 90d

@@ -176,8 +176,18 @@ function CatalystCard({ c, daysOut }: { c: Catalyst; daysOut: number }) {
             </div>
           )}
 
-          <div className="mt-3 text-[10px] uppercase tracking-[0.16em] font-mono text-fg-subtle">
-            Source · {c.source}
+          <div className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] font-mono text-fg-subtle">
+            <span>Source · {c.source}</span>
+            {c.sourceUrl && (
+              <a
+                href={c.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline normal-case tracking-normal font-mono"
+              >
+                Verify ↗
+              </a>
+            )}
           </div>
         </div>
       )}
