@@ -9,8 +9,6 @@ import type { Catalyst } from "./catalysts";
 import { findTicker } from "./tickers";
 import { addDays, parseISO, toISO } from "./catalysts";
 
-// Anchor: today is 2026-05-05 in our test build. Earnings cadence is per-ticker,
-// nudged to a believable next-quarter date.
 const ANCHOR = "2026-05-05";
 
 interface SyntheticConfig {
@@ -139,6 +137,40 @@ const CFG: SyntheticConfig[] = [
   { ticker: "GME",  earnings: { date: "2026-09-09", impliedMove: 0.150, last4: [4.5, -29.0, 16.7, -8.0] } },
   { ticker: "AMC",  earnings: { date: "2026-08-05", impliedMove: 0.140, last4: [-12.0, 7.5, -5.0, -3.0] } },
   { ticker: "BB",   earnings: { date: "2026-06-25", impliedMove: 0.080, last4: [-12.5, -5.4, 4.0, -2.0] } },
+
+  { ticker: "ETOR", earnings: { date: "2026-05-21", impliedMove: 0.110, last4: [12.4, -8.2, 6.1, 4.5] } },
+  { ticker: "NICE", earnings: { date: "2026-05-15", impliedMove: 0.060, last4: [-2.1, 4.8, -3.4, 1.6] }, dividend: { date: "2026-05-19", amount: 0.85, yieldPct: 1.05 } },
+  { ticker: "CHKP", earnings: { date: "2026-07-29", impliedMove: 0.055, last4: [-3.6, 1.5, 2.4, -1.0] } },
+  { ticker: "WIX",  earnings: { date: "2026-08-06", impliedMove: 0.080, last4: [-5.0, 9.4, -2.1, 4.7] } },
+  { ticker: "MNDY", earnings: { date: "2026-05-18", impliedMove: 0.110, last4: [-10.2, 13.8, -3.6, 5.4] } },
+  { ticker: "CYBR", earnings: { date: "2026-08-12", impliedMove: 0.075, last4: [-5.8, 4.0, 6.2, -3.1] } },
+  { ticker: "GLBE", earnings: { date: "2026-08-19", impliedMove: 0.105, last4: [-9.3, 11.6, -8.4, 5.7] } },
+  { ticker: "ARM",  earnings: { date: "2026-08-05", impliedMove: 0.090, last4: [-5.4, 7.0, -3.8, 4.1] } },
+  { ticker: "IONQ", earnings: { date: "2026-08-12", impliedMove: 0.130, last4: [11.0, -14.0, 8.5, 3.4] } },
+  { ticker: "RKLB", earnings: { date: "2026-08-12", impliedMove: 0.115, last4: [-11.5, 14.2, -8.0, 9.2] } },
+  { ticker: "ASTS", earnings: { date: "2026-08-12", impliedMove: 0.140, last4: [16.3, -10.8, 8.2, 4.1] } },
+  { ticker: "JOBY", earnings: { date: "2026-08-05", impliedMove: 0.115, last4: [-7.2, 5.1, -3.4, 6.2] } },
+  { ticker: "SMR",  earnings: { date: "2026-08-12", impliedMove: 0.135, last4: [-12.8, 18.5, -9.0, 14.2] } },
+  { ticker: "ENPH", earnings: { date: "2026-07-22", impliedMove: 0.095, last4: [-15.0, 11.6, -8.3, 5.8] } },
+  { ticker: "SEDG", earnings: { date: "2026-08-04", impliedMove: 0.110, last4: [-22.3, 9.0, -10.1, 6.4] } },
+  { ticker: "FSLR", earnings: { date: "2026-07-28", impliedMove: 0.085, last4: [-10.5, 8.2, -3.7, 4.9] } },
+  { ticker: "RUN",  earnings: { date: "2026-08-05", impliedMove: 0.130, last4: [-22.0, -3.5, 18.6, -8.0] } },
+  { ticker: "NU",   earnings: { date: "2026-08-12", impliedMove: 0.090, last4: [-7.5, 6.2, -3.0, 5.5] } },
+  { ticker: "STNE", earnings: { date: "2026-08-13", impliedMove: 0.105, last4: [-8.4, 3.7, -10.2, 7.1] } },
+  { ticker: "MMYT", earnings: { date: "2026-07-22", impliedMove: 0.075, last4: [-3.4, 5.6, -1.0, 4.5] } },
+  { ticker: "CART", earnings: { date: "2026-08-12", impliedMove: 0.085, last4: [-5.1, 9.2, -4.6, 4.2] } },
+  { ticker: "TOST", earnings: { date: "2026-08-05", impliedMove: 0.095, last4: [-9.6, 12.4, -3.2, 7.4] } },
+  { ticker: "SOUN", earnings: { date: "2026-08-06", impliedMove: 0.140, last4: [-12.5, 26.8, -10.4, 6.2] } },
+  { ticker: "BBAI", earnings: { date: "2026-08-12", impliedMove: 0.155, last4: [-18.0, 22.5, -14.0, 9.6] } },
+  { ticker: "ALAB", earnings: { date: "2026-08-05", impliedMove: 0.105, last4: [-8.2, 7.4, -3.1, 5.0] } },
+  { ticker: "CRDO", earnings: { date: "2026-09-03", impliedMove: 0.105, last4: [-12.4, 6.5, -3.8, 9.1] } },
+  { ticker: "VKTX", earnings: { date: "2026-08-05", impliedMove: 0.155, last4: [-22.0, 14.5, -10.5, 8.4] } },
+  { ticker: "CRSP", earnings: { date: "2026-08-12", impliedMove: 0.095, last4: [-3.5, 6.4, -8.1, 4.5] } },
+  { ticker: "NTLA", earnings: { date: "2026-08-12", impliedMove: 0.115, last4: [-10.0, 8.4, -5.0, 6.5] } },
+  { ticker: "BEAM", earnings: { date: "2026-08-12", impliedMove: 0.110, last4: [-8.4, 9.0, -6.5, 4.0] } },
+  { ticker: "EDIT", earnings: { date: "2026-08-12", impliedMove: 0.140, last4: [-12.5, 6.0, -8.2, 9.4] } },
+  { ticker: "BIRK", earnings: { date: "2026-06-12", impliedMove: 0.075, last4: [-3.8, 5.2, -2.1, 4.0] } },
+  { ticker: "KLAR", earnings: { date: "2026-05-26", impliedMove: 0.095, last4: [6.4, -4.0, 5.2, 3.5] } },
 ];
 
 export function syntheticFor(ticker: string): Catalyst[] {
@@ -148,12 +180,12 @@ export function syntheticFor(ticker: string): Catalyst[] {
   const out: Catalyst[] = [];
   if (cfg.earnings) {
     out.push({
-      id: `earn:${upper}:${cfg.earnings.date}`,
+      id: "earn:" + upper + ":" + cfg.earnings.date,
       ticker: upper,
       category: "earnings",
       date: cfg.earnings.date,
       title: "Quarterly earnings",
-      summary: `Implied move ±${(cfg.earnings.impliedMove * 100).toFixed(1)}% (front-month straddle).`,
+      summary: "Implied move ±" + (cfg.earnings.impliedMove * 100).toFixed(1) + "% (front-month straddle).",
       impact: cfg.earnings.impliedMove,
       confirmed: false,
       source: "Curated",
@@ -165,12 +197,12 @@ export function syntheticFor(ticker: string): Catalyst[] {
   }
   if (cfg.dividend) {
     out.push({
-      id: `div:${upper}:${cfg.dividend.date}`,
+      id: "div:" + upper + ":" + cfg.dividend.date,
       ticker: upper,
       category: "dividend",
       date: cfg.dividend.date,
-      title: `Ex-dividend: $${cfg.dividend.amount.toFixed(2)}/share`,
-      summary: `${cfg.dividend.yieldPct.toFixed(2)}% trailing yield.`,
+      title: "Ex-dividend: $" + cfg.dividend.amount.toFixed(2) + "/share",
+      summary: cfg.dividend.yieldPct.toFixed(2) + "% trailing yield.",
       impact: 0.005,
       confirmed: true,
       source: "Curated",
@@ -180,7 +212,6 @@ export function syntheticFor(ticker: string): Catalyst[] {
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// keep imports happy
 void ANCHOR;
 void parseISO;
 void addDays;

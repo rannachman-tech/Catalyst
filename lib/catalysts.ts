@@ -50,6 +50,15 @@ export interface Catalyst {
 export interface TickerCatalystSet {
   ticker: string;
   asOf: string;             // ISO date data was generated
+  // Resolved eToro instrument info — populated for any universe ticker, not
+  // just the curated 119. Used by the Trade CTA + display heading.
+  entry?: {
+    ticker: string;
+    symbolFull: string;
+    instrumentId: number;
+    name: string;
+    sector?: string;
+  };
   next?: Catalyst;
   catalysts: Catalyst[];     // sorted by date asc, future-only
   history?: Array<{
